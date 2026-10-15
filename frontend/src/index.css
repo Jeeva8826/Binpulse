@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+}
+
+/* Keep the fixed dashboard header from overflowing into the page at laptop widths. */
+.app-navbar {
+  box-sizing: border-box;
+}
+
+@media (max-width: 1350px) {
+  .app-navbar {
+    height: auto;
+    min-height: 112px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "context mode"
+      "status actions";
+    align-content: center;
+    justify-content: unset;
+    gap: 8px 12px;
+    padding: 10px 16px;
+  }
+
+  .app-navbar-context { grid-area: context; }
+  .app-navbar-mode { grid-area: mode; justify-self: end; }
+  .app-navbar-status { grid-area: status; min-width: 0; }
+  .app-navbar-actions { grid-area: actions; justify-self: end; }
+  .app-main { padding-top: 144px; }
+}
+
+@media (max-width: 900px) {
+  .app-navbar {
+    left: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "context" "mode" "status" "actions";
+    gap: 8px;
+  }
+
+  .app-navbar-mode,
+  .app-navbar-status,
+  .app-navbar-actions {
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+
+  .app-main { padding-top: 196px; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #e3f1e7;
+}
+::-webkit-scrollbar-thumb {
+  background: #a7f3ca;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1d6b4b;
+}
+
+/* Leaflet container height */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5rem;
+  z-index: 10;
+}

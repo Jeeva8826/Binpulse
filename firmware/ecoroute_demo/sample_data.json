@@ -1,0 +1,66 @@
+[
+  {
+    "project": "EcoRoute",
+    "record_id": 1,
+    "timestamp_ms": 3000,
+    "data_source": "SIMULATED",
+    "area": {
+      "area_id": "AREA_03",
+      "name": "Market Zone",
+      "category": "Market",
+      "estimated_demand_kg": 1280
+    },
+    "weighbridge": {
+      "truck_id": "TRUCK_02",
+      "gross_weight_kg": 6056,
+      "tare_weight_kg": 4800,
+      "net_weight_kg": 1256
+    },
+    "vehicle": {
+      "payload_capacity_kg": 4000,
+      "capacity_utilization_percent": 31.4
+    },
+    "collection": {
+      "recommendation": "COLLECT_TODAY",
+      "reason": "Estimated demand reached today's threshold",
+      "demand_spike": false
+    },
+    "route": {
+      "route_sequence": "DEPOT>AREA_03>YARD",
+      "estimated_distance_km": 6.7,
+      "estimated_travel_time_min": 20
+    }
+  },
+  {
+    "project": "EcoRoute",
+    "record_id": 2,
+    "timestamp_ms": 6000,
+    "data_source": "SIMULATED",
+    "area": {
+      "area_id": "AREA_01",
+      "name": "Residential Zone",
+      "category": "Residential",
+      "estimated_demand_kg": 540
+    },
+    "weighbridge": {
+      "truck_id": "TRUCK_01",
+      "gross_weight_kg": 5950,
+      "tare_weight_kg": 5500,
+      "net_weight_kg": 450
+    },
+    "vehicle": {
+      "payload_capacity_kg": 5000,
+      "capacity_utilization_percent": 9.0
+    },
+    "collection": {
+      "recommendation": "ROUTINE",
+      "reason": "Estimated demand is within routine range",
+      "demand_spike": false
+    },
+    "route": {
+      "route_sequence": "DEPOT>AREA_01>YARD",
+      "estimated_distance_km": 8.4,
+      "estimated_travel_time_min": 24
+    }
+  }
+]
