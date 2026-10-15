@@ -67,6 +67,25 @@ CREATE TABLE IF NOT EXISTS truck_visits (
   FOREIGN KEY (trip_id) REFERENCES trips(id)
 );
 
+-- Physical Arduino yard visits stay separate from simulated/dispatched trips.
+CREATE TABLE IF NOT EXISTS live_yard_visits (
+  visit_id TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  truck_id TEXT,
+  plate_number TEXT,
+  waste_category TEXT DEFAULT 'bio' CHECK (waste_category IN ('bio', 'non-bio', 'mixed')),
+  status TEXT DEFAULT 'awaiting_identification' CHECK (status IN ('awaiting_identification', 'identified', 'departed')),
+  arrived_at TEXT NOT NULL,
+  departed_at TEXT,
+  dwell_s INTEGER DEFAULT 0,
+  distance_cm REAL,
+  est_volume_m3 REAL,
+  est_quantity_kg REAL,
+  quantity_source TEXT DEFAULT 'ultrasonic_estimate',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_live_yard_visits_arrived ON live_yard_visits(arrived_at DESC);
+
 CREATE TABLE IF NOT EXISTS area_quantities (
   id TEXT PRIMARY KEY,
   trip_id TEXT,

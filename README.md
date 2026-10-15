@@ -116,7 +116,11 @@ Full instructions and troubleshooting are in [docs/REALTIME_BIN_SETUP.md](docs/R
 
 ## Yard entrance sensing
 
-The yard entrance workflow is separate from the Arduino Uno bin monitor. It can run in **Simulation** mode with the included simulator or in **ESP32 Yard** mode with the Wi-Fi firmware.
+The yard entrance workflow is separate from the simulation and supports two physical Arduino Uno sketch formats. The current `ardino.ino` sketch (HC-SR04 on D9/D10, 9600 baud, human-readable `Distance: ... | Fill: ...` lines) is accepted directly by the serial reader and feeds both BIN01 fill readings and yard-distance detection. The dedicated `firmware/arduino_yard_node/arduino_yard_node.ino` sketch uses D7/D8, JSON, and 115200 baud for yard-only telemetry. Configure the matching baud rate in `.env` for whichever sketch is uploaded. Only one application can read COM12 at a time; close Arduino IDE Serial Monitor while BinPulse is connected.
+
+In **Arduino Yard** mode, three consecutive readings at or below `TRUCK_PRESENT_CM` (180 cm by default) create a live arrival. BinPulse then asks staff to confirm a truck ID, plate number, and waste category; generated ID/plate values are editable demo placeholders, not automatic vehicle recognition. The live yard visit log is stored separately from simulation and dispatched-trip history. Three consecutive readings above the threshold mark the visit departed. Quantity remains an ultrasonic estimate, not a measured weight.
+
+The yard entrance workflow can also run in **Simulation** mode with the included simulator or in **ESP32 Yard** mode with the Wi-Fi firmware.
 
 - Start the software demonstration with `npm run simulate` in a second terminal while the backend is running. It sends simulated sensor events to port `5000`.
 - For a physical yard node, configure Wi-Fi credentials, server address, and API key in `firmware/binpulse_yard_node/config.h`, then upload the sketch for the actual ESP32 board.

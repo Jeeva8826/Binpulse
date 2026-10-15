@@ -40,13 +40,17 @@ function handleLine(rawLine) {
   // JSON. Convert that exact format to BIN01 telemetry while leaving alerts and
   // sensor diagnostics out of the measurement stream.
   const textBinReading = /^Distance:\s*(-?\d+(?:\.\d+)?)\s*cm\s*\|\s*Fill:\s*(-?\d+(?:\.\d+)?)\s*%$/i.exec(line);
+  const textSensorDropout = /^No echo\b/i.test(line);
   let payload;
   if (textBinReading) {
     payload = {
       bin_id: 'BIN01',
+      device_id: 'ARDUINO_YARD_01',
       distance_cm: Number(textBinReading[1]),
       fill: Number(textBinReading[2])
     };
+  } else if (textSensorDropout) {
+    payload = { device_id: 'ARDUINO_YARD_01', distance_cm: -1 };
   }
   try {
     if (!payload) payload = JSON.parse(line);
@@ -74,7 +78,13 @@ function handleLine(rawLine) {
       ? 'Arduino is connected, but the ultrasonic sensor has no echo. Check the target, wiring, and pin mapping.'
       : null;
     broadcast({ type: 'YARD_TELEMETRY', data: result });
-    if (result.completedVisit) {
+    if (deviceId === 'ARDUINO_YARD_01') {
+      if (result.activeLiveVisit) {
+        broadcast({ type: 'LIVE_YARD_VISIT', data: result.activeLiveVisit });
+      } else if (result.completedVisit) {
+        broadcast({ type: 'LIVE_YARD_VISIT', data: { ...result.completedVisit, status: 'departed' } });
+      }
+    } else if (result.completedVisit) {
       broadcast({ type: 'TRUCK_VISIT_COMPLETED', data: result.completedVisit });
     }
   }

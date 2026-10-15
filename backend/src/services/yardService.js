@@ -11,7 +11,9 @@ function createPresenceState() {
     arrivedAt: null,
     rawDistances: [],
     currentDwellSeconds: 0,
-    activeTripId: null
+    activeTripId: null,
+    activeLiveVisitId: null,
+    liveTruckAssignment: null
   };
 }
 function getPresenceState(deviceId = 'ESP32_YARD_01') {
@@ -27,6 +29,7 @@ const REQUIRED_CONSECUTIVE = 3; // Debounce threshold (samples)
  */
 function processSensorReading(data) {
   const deviceId = data.deviceId || 'ESP32_YARD_01';
+  const isArduinoYard = deviceId === 'ARDUINO_YARD_01';
   const presenceState = getPresenceState(deviceId);
   const distanceCm = parseFloat(data.distanceCm);
   const rawDistanceCm = parseFloat(data.rawDistanceCm || data.distanceCm);
@@ -73,10 +76,19 @@ function processSensorReading(data) {
         presenceState.arrivedAt = now;
         event = 'arrival';
 
-        // Look up currently dispatched trip if available (most recent dispatch)
-        const activeTrip = db.get("SELECT id FROM trips WHERE status = 'dispatched' ORDER BY dispatched_at DESC LIMIT 1");
-        if (activeTrip) {
-          presenceState.activeTripId = activeTrip.id;
+        if (isArduinoYard) {
+          const visitId = `LIVE_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          presenceState.activeLiveVisitId = visitId;
+          presenceState.liveTruckAssignment = null;
+          db.run(
+            `INSERT INTO live_yard_visits (visit_id, device_id, status, arrived_at, dwell_s, distance_cm)
+             VALUES (?, ?, 'awaiting_identification', ?, 0, ?)`,
+            [visitId, deviceId, nowIso, distanceCm]
+          );
+        } else {
+          // Simulated/other yard feeds retain the existing dispatched-trip behavior.
+          const activeTrip = db.get("SELECT id FROM trips WHERE status = 'dispatched' ORDER BY dispatched_at DESC LIMIT 1");
+          if (activeTrip) presenceState.activeTripId = activeTrip.id;
         }
       }
     } else {
@@ -102,14 +114,35 @@ function processSensorReading(data) {
           departedAt: nowIso,
           dwellSeconds,
           medianDistanceCm: medianDistance,
-          tripId: presenceState.activeTripId
+          tripId: isArduinoYard ? null : presenceState.activeTripId,
+          persist: !isArduinoYard,
+          visitId: isArduinoYard ? presenceState.activeLiveVisitId : null,
+          wasteCategoryOverride: isArduinoYard ? presenceState.liveTruckAssignment?.wasteCategory : null
         });
+
+        if (isArduinoYard && presenceState.activeLiveVisitId) {
+          const assignment = presenceState.liveTruckAssignment;
+          db.run(
+            `UPDATE live_yard_visits SET status = 'departed', departed_at = ?, dwell_s = ?, distance_cm = ?,
+               est_volume_m3 = ?, est_quantity_kg = ?, quantity_source = ? WHERE visit_id = ?`,
+            [nowIso, dwellSeconds, medianDistance, completedVisit.estVolumeM3, completedVisit.estQuantityKg,
+              completedVisit.quantitySource, presenceState.activeLiveVisitId]
+          );
+          completedVisit = {
+            ...completedVisit,
+            truckId: assignment?.truckId || null,
+            plateNumber: assignment?.plateNumber || null,
+            wasteCategory: assignment?.wasteCategory || 'bio'
+          };
+        }
 
         // Reset state for next truck
         presenceState.arrivedAt = null;
         presenceState.rawDistances = [];
         presenceState.currentDwellSeconds = 0;
         presenceState.activeTripId = null;
+        presenceState.activeLiveVisitId = null;
+        presenceState.liveTruckAssignment = null;
       }
     }
   }
@@ -119,6 +152,13 @@ function processSensorReading(data) {
     presenceState.currentDwellSeconds = Math.round((now.getTime() - presenceState.arrivedAt.getTime()) / 1000);
   } else {
     presenceState.currentDwellSeconds = 0;
+  }
+
+  if (isArduinoYard && presenceState.activeLiveVisitId) {
+    db.run(
+      `UPDATE live_yard_visits SET dwell_s = ?, distance_cm = ? WHERE visit_id = ? AND departed_at IS NULL`,
+      [presenceState.currentDwellSeconds, isOutOfRange ? null : distanceCm, presenceState.activeLiveVisitId]
+    );
   }
 
   // Log raw reading
@@ -135,15 +175,53 @@ function processSensorReading(data) {
     dwellSeconds: presenceState.currentDwellSeconds,
     event,
     completedVisit,
+    activeLiveVisit: getActiveLiveVisit(deviceId),
     timestamp: nowIso
   };
+}
+
+function getActiveLiveVisit(deviceId = 'ARDUINO_YARD_01') {
+  return db.get(
+    `SELECT visit_id AS visitId, device_id AS deviceId, truck_id AS truckId, plate_number AS plateNumber,
+       waste_category AS wasteCategory, status, arrived_at AS arrivedAt, dwell_s AS dwellSeconds,
+       distance_cm AS distanceCm
+     FROM live_yard_visits WHERE device_id = ? AND departed_at IS NULL ORDER BY arrived_at DESC LIMIT 1`,
+    [deviceId]
+  );
+}
+
+function assignLiveTruck({ truckId, plateNumber, wasteCategory = 'bio' }) {
+  const state = getPresenceState('ARDUINO_YARD_01');
+  if (!state.isTruckPresent || !state.activeLiveVisitId) {
+    const error = new Error('No live vehicle is currently detected at the yard entrance.');
+    error.statusCode = 409;
+    throw error;
+  }
+  state.liveTruckAssignment = { truckId, plateNumber, wasteCategory };
+  db.run(
+    `UPDATE live_yard_visits SET truck_id = ?, plate_number = ?, waste_category = ?, status = 'identified'
+     WHERE visit_id = ? AND departed_at IS NULL`,
+    [truckId, plateNumber, wasteCategory, state.activeLiveVisitId]
+  );
+  return getActiveLiveVisit('ARDUINO_YARD_01');
+}
+
+function getLiveYardVisits(limit = 20) {
+  return db.query(
+    `SELECT visit_id AS visitId, device_id AS deviceId, truck_id AS truckId, plate_number AS plateNumber,
+       waste_category AS wasteCategory, status, arrived_at AS arrivedAt, departed_at AS departedAt,
+       dwell_s AS dwellSeconds, distance_cm AS distanceCm, est_volume_m3 AS estimatedVolumeM3,
+       est_quantity_kg AS estimatedQuantityKg, quantity_source AS quantitySource
+     FROM live_yard_visits ORDER BY arrived_at DESC LIMIT ?`,
+    [Math.max(1, Math.min(100, Number(limit) || 20))]
+  );
 }
 
 /**
  * Finalize visit and calculate estimated volume & weight based on mode
  */
-function finalizeVisit({ deviceId, arrivedAt, departedAt, dwellSeconds, medianDistanceCm, tripId }) {
-  const visitId = 'VISIT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+function finalizeVisit({ deviceId, arrivedAt, departedAt, dwellSeconds, medianDistanceCm, tripId, persist = true, visitId: suppliedVisitId = null, wasteCategoryOverride = null }) {
+  const visitId = suppliedVisitId || 'VISIT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
   const modeSetting = db.get("SELECT value FROM settings WHERE key = 'QUANTITY_MODE'");
   const quantityMode = modeSetting ? modeSetting.value : config.QUANTITY_MODE;
 
@@ -161,7 +239,7 @@ function finalizeVisit({ deviceId, arrivedAt, departedAt, dwellSeconds, medianDi
     }
   }
 
-  const category = (trip && trip.waste_category) || 'bio';
+  const category = wasteCategoryOverride || (trip && trip.waste_category) || 'bio';
   const density = config.DENSITIES_KG_M3[category] || 300.0;
 
   if (quantityMode === 'load_level') {
@@ -184,45 +262,27 @@ function finalizeVisit({ deviceId, arrivedAt, departedAt, dwellSeconds, medianDi
     quantitySource = 'trip_count';
   }
 
-  // Insert visit record
-  db.run(
-    `INSERT INTO truck_visits (id, truck_id, trip_id, device_id, arrived_at, departed_at, dwell_s, raw_distance_cm, est_volume_m3, est_quantity_kg, quantity_source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      visitId,
-      truck ? truck.id : null,
-      trip ? trip.id : null,
-      deviceId,
-      arrivedAt,
-      departedAt,
-      dwellSeconds,
-      medianDistanceCm,
-      estVolumeM3,
-      estQuantityKg,
-      quantitySource
-    ]
-  );
-
-  // If a trip was active, mark it completed, set truck to idle, and run attribution
-  if (trip) {
+  if (persist) {
+    // Existing simulation and ESP32 flow continues to store into operational trips.
     db.run(
-      "UPDATE trips SET status = 'completed', completed_at = ? WHERE id = ?",
-      [departedAt, trip.id]
+      `INSERT INTO truck_visits (id, truck_id, trip_id, device_id, arrived_at, departed_at, dwell_s, raw_distance_cm, est_volume_m3, est_quantity_kg, quantity_source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [visitId, truck ? truck.id : null, trip ? trip.id : null, deviceId, arrivedAt, departedAt,
+        dwellSeconds, medianDistanceCm, estVolumeM3, estQuantityKg, quantitySource]
     );
 
-    if (truck) {
-      db.run("UPDATE trucks SET status = 'idle' WHERE id = ?", [truck.id]);
+    if (trip) {
+      db.run("UPDATE trips SET status = 'completed', completed_at = ? WHERE id = ?", [departedAt, trip.id]);
+      if (truck) db.run("UPDATE trucks SET status = 'idle' WHERE id = ?", [truck.id]);
+      const attributionService = require('./attributionService');
+      attributionService.attributeTrip({
+        tripId: trip.id,
+        visitId,
+        quantityKg: estQuantityKg,
+        wasteCategory: category,
+        recordedDate: departedAt.slice(0, 10)
+      });
     }
-
-    // Call attribution service dynamically
-    const attributionService = require('./attributionService');
-    attributionService.attributeTrip({
-      tripId: trip.id,
-      visitId,
-      quantityKg: estQuantityKg,
-      wasteCategory: category,
-      recordedDate: departedAt.slice(0, 10)
-    });
   }
 
   return {
@@ -295,6 +355,8 @@ function getYardStatus(source = 'all') {
       rssi: device ? device.rssi : -68,
       uptimeS: device ? device.uptime_s : 0
     },
+    serialLink: { port: config.ARDUINO_SERIAL_PORT, baudRate: config.ARDUINO_BAUD_RATE },
+    activeLiveVisit: getActiveLiveVisit('ARDUINO_YARD_01'),
     today: {
       visitCount: todayVisits ? todayVisits.count : 0,
       totalEstimatedKg: todayVisits ? Math.round(todayVisits.total_kg) : 0
@@ -321,10 +383,13 @@ module.exports = {
   processSensorReading,
   finalizeVisit,
   getYardStatus,
+  assignLiveTruck,
+  getLiveYardVisits,
   getVisitsLog,
   getPresenceState: (deviceId) => getPresenceState(deviceId),
   resetPresenceState: () => {
     presenceStates.clear();
     presenceStates.set('ESP32_YARD_01', createPresenceState());
+    presenceStates.set('ARDUINO_YARD_01', createPresenceState());
   }
 };

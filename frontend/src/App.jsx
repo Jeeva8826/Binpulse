@@ -123,7 +123,19 @@ export default function App() {
               currentDwellSeconds: msg.data.dwellSeconds,
               latestReadingAt: msg.data.timestamp,
               latestEvent: msg.data.event,
-              latestDeviceId: msg.data.deviceId
+              latestDeviceId: msg.data.deviceId,
+              activeLiveVisit: msg.data.activeLiveVisit ?? prev?.activeLiveVisit,
+              device: {
+                ...prev?.device,
+                deviceId: msg.data.deviceId,
+                status: 'online',
+                lastSeenAt: msg.data.timestamp
+              }
+            }));
+          } else if (msg.type === 'LIVE_YARD_VISIT') {
+            setYardStatus(prev => ({
+              ...prev,
+              activeLiveVisit: msg.data?.status === 'departed' ? null : msg.data
             }));
           } else if (msg.type === 'TRUCK_VISIT_COMPLETED') {
             const isSimulatorVisit = String(msg.data.deviceId || '').endsWith('_SIM');
