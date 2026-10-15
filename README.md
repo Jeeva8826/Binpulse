@@ -22,10 +22,10 @@ The project is configured around Coimbatore municipal operations. It includes a 
 | Yard simulator | Demonstrates truck arrival, dwell, and departure events | HTTP API on port 5000 | Yard Entrance Node in Simulation mode |
 | Arduino Uno yard node | Reports ultrasonic distance and truck-presence events at the yard | USB serial to the backend on COM12 by default | Yard Entrance Node in Arduino Yard mode |
 | ESP32 yard node | Optional Wi-Fi version of the central yard sensor | HTTP API on port 5000 | Yard Entrance Node in Arduino Yard mode |
-| Arduino Uno BIN01 node | Optional single-bin fill, distance, and estimated volume | USB serial to the backend | Arduino Bin Monitor |
+| Arduino Uno BIN01 node | Live fill and distance for the physical sensor | USB serial to the backend | Live Sensor Dashboard |
 | EcoRoute sample records | Displays supplied example records | Local API | EcoRoute Sample Data; records are marked simulated |
 
-The yard selector controls the central-yard feed. The Arduino yard sketch reports distance over USB serial; the optional ESP32 sketch reports through Wi-Fi. The separate Arduino Bin Monitor is available when the board is flashed with the BIN01 sketch.
+The yard selector controls the central-yard feed. The Arduino yard sketch reports distance over USB serial; the optional ESP32 sketch reports through Wi-Fi. The separate Live Sensor Dashboard reads the physical BIN01 sensor. The simulation and operations dashboard remains independent.
 
 ## Technology
 
@@ -65,7 +65,7 @@ Copy `.env.example` to `.env` and adjust values for the local machine when neede
 | `PORT` | `5000` | Backend HTTP and WebSocket port |
 | `DB_PATH` | `./backend/data/binpulse.sqlite` | SQLite database file |
 | `ARDUINO_SERIAL_PORT` | `COM12` | USB serial port used by the Uno on Windows |
-| `ARDUINO_BAUD_RATE` | `115200` | Serial speed used by the Uno sketch and backend |
+| `ARDUINO_BAUD_RATE` | `9600` | Serial speed used by the current Uno sketch and backend |
 | `DEVICE_API_KEY` | example value in `.env.example` | API key shared with the ESP32 yard firmware |
 | `VITE_API_URL` | `http://localhost:5000` | Frontend API base URL |
 | `VITE_WS_URL` | `ws://localhost:5000/ws` | Frontend WebSocket URL |
@@ -91,7 +91,7 @@ See [docs/ARDUINO_YARD_SETUP.md](docs/ARDUINO_YARD_SETUP.md) for the full setup 
 
 ## Optional Arduino Uno bin monitor
 
-The separate BIN01 sketch sends one JSON telemetry record approximately every two seconds. The Node backend reads the USB serial stream, validates and stores BIN01 readings, and broadcasts updates to the Arduino Bin Monitor.
+The Live Sensor Dashboard reads the physical BIN01 fill and distance values from the Arduino Uno over USB. It accepts the supplied human-readable `Distance: ... | Fill: ...` sketch at 9600 baud and the project's JSON sketch at 115200 baud. It shows physical readings only; the existing operations and simulation dashboard stays separate.
 
 ### HC-SR04 wiring
 
@@ -110,7 +110,7 @@ The Uno accepts the HC-SR04's 5V echo signal directly. Do not use this wiring fo
 2. Open `firmware/binpulse_bin_node/binpulse_bin_node.ino` and upload it to the board.
 3. Set `ARDUINO_SERIAL_PORT` in `.env` to the port assigned by the computer. The configured default is `COM12`.
 4. Start BinPulse with `npm run dev` and close Arduino IDE Serial Monitor while BinPulse is reading the port. A serial port can be owned by only one application at a time.
-5. Open **Arduino Bin Monitor** in the dashboard. BIN01 displays the latest sensor reading; the other bin cards are marked as simulated samples.
+5. Open **Live Sensor Dashboard**. It displays current physical BIN01 fill and distance readings. Arduino IDE Serial Monitor must be closed while BinPulse is receiving data.
 
 Full instructions and troubleshooting are in [docs/REALTIME_BIN_SETUP.md](docs/REALTIME_BIN_SETUP.md).
 

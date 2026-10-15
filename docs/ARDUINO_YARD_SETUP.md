@@ -19,7 +19,7 @@ Connect all four sensor wires firmly. The sensor and Uno must share ground. HC-S
 2. Open `firmware/arduino_yard_node/arduino_yard_node.ino` in Arduino IDE.
 3. Select **Arduino Uno** and the port assigned to the board. On the development computer this is **COM12**.
 4. Upload the sketch. It sends one JSON distance record about every two seconds at **115200 baud**.
-5. Set `ARDUINO_SERIAL_PORT` in `.env` if the port differs from `COM12`. The default serial speed is `ARDUINO_BAUD_RATE=115200`.
+5. Set `ARDUINO_SERIAL_PORT` in `.env` if the port differs from `COM12`. Because the supplied bin sketch uses 9600 baud, set `ARDUINO_BAUD_RATE=115200` when switching the Uno to this yard sketch.
 6. Close Arduino IDE Serial Monitor. BinPulse and Serial Monitor cannot own the same port at once.
 7. Start the app with `npm run dev`, select **Arduino Yard**, and open **Yard Entrance Node**.
 

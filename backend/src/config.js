@@ -10,7 +10,7 @@ module.exports = {
   HOST: process.env.HOST || '0.0.0.0',
   DB_PATH: configuredDbPath,
   ARDUINO_SERIAL_PORT: process.env.ARDUINO_SERIAL_PORT || 'COM12',
-  ARDUINO_BAUD_RATE: parseInt(process.env.ARDUINO_BAUD_RATE || '115200', 10),
+  ARDUINO_BAUD_RATE: parseInt(process.env.ARDUINO_BAUD_RATE || '9600', 10),
   DEVICE_API_KEY: process.env.DEVICE_API_KEY || 'binpulse_secret_key_2026',
   NODE_ENV: process.env.NODE_ENV || 'development',
   QUANTITY_MODE: process.env.QUANTITY_MODE || 'load_level', // 'load_level' | 'trip_count'

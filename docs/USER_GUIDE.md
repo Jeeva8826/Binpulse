@@ -48,7 +48,7 @@ This guide is for someone opening the project for the first time. The dashboard 
 8. **Manifest & Reports** — review aggregate estimates and choose **Export Manifest (CSV)** to download a report.
 9. **Alerts & Risks / System Settings** — resolve alerts and adjust sensor thresholds, waste densities, health-gap limits, attribution, or ML mode. Select **Save Configuration** after edits.
 
-The top **Simulation / Arduino Yard** selector controls the central Yard Entrance Node view. Simulation mode shows simulator readings and test controls. Arduino Yard mode shows readings from the Uno over USB; the ESP32 yard firmware remains an alternative hardware connection. The **Arduino Bin Monitor** is separate and uses its own BIN01 sketch.
+The top **Simulation / Arduino Yard** selector controls only the central Yard Entrance Node view. Simulation mode shows simulator readings and test controls. Arduino Yard mode shows readings from the Uno over USB; the ESP32 yard firmware remains an alternative hardware connection. The **Live Sensor Dashboard** is a separate page for physical BIN01 fill and distance readings.
 
 ## 4. Run a continuous software-only sensor demo
 
@@ -64,7 +64,7 @@ The simulator sends changing ultrasonic distances to the local backend about eve
 
 1. Connect HC-SR04 **VCC to 5V**, **GND to GND**, **TRIG to D7**, and **ECHO to D8**.
 2. In Arduino IDE open `firmware/arduino_yard_node/arduino_yard_node.ino`, select **Arduino Uno** and its COM port, then upload. The sketch streams distance JSON at **115200 baud**.
-3. Set `ARDUINO_SERIAL_PORT` in `.env` to the assigned COM port (default `COM12`). Start BinPulse with `npm run dev`; close Arduino IDE Serial Monitor so the backend can own the serial port.
+3. Set `ARDUINO_SERIAL_PORT` in `.env` to the assigned COM port (default `COM12`) and set `ARDUINO_BAUD_RATE=115200` for this yard sketch. Start BinPulse with `npm run dev`; close Arduino IDE Serial Monitor so the backend can own the serial port.
 4. Select **Arduino Yard** in the dashboard and open **Yard Entrance Node**. The dashboard uses successive distance readings to detect truck arrival and departure.
 
 For the separate single-bin monitor, follow [REALTIME_BIN_SETUP.md](REALTIME_BIN_SETUP.md).
@@ -73,11 +73,11 @@ For the separate single-bin monitor, follow [REALTIME_BIN_SETUP.md](REALTIME_BIN
 
 1. Wire HC-SR04 **VCC to 5V**, **GND to GND**, **TRIG to D9**, and **ECHO to D10**. The Uno accepts 5V on its digital input; this differs from the ESP32 wiring.
 2. In `firmware/binpulse_bin_node/config.h`, calibrate the bin size and empty/full distances to match the installed sensor.
-3. In Arduino IDE open `firmware/binpulse_bin_node/binpulse_bin_node.ino`, select **Arduino Uno** and **COM12**, then upload. The sketch streams JSON at **115200 baud**.
+3. In Arduino IDE select **Arduino Uno on COM12** and upload the supplied sketch. It prints distance and fill text lines at **9600 baud**; the backend parses these into physical BIN01 samples.
 4. Start BinPulse with `npm run dev`. The backend reads COM12 and the dashboard uses port 3000. Close Arduino IDE Serial Monitor while BinPulse is reading the serial port.
-5. Open **Arduino Bin Monitor** in the dashboard. The live card shows BIN01 fill, distance, volume, and last-reading time; other bin cards are labeled sample values.
+5. Open **Live Sensor Dashboard**. It shows only physical BIN01 fill and distance readings, separate from the unchanged simulation and operations dashboard.
 
-The backend defaults to `ARDUINO_SERIAL_PORT=COM12` and `ARDUINO_BAUD_RATE=115200`. Set these in `.env` if the assigned port changes. For details, see [REALTIME_BIN_SETUP.md](REALTIME_BIN_SETUP.md).
+The supplied Arduino sketch uses `ARDUINO_SERIAL_PORT=COM12` and `ARDUINO_BAUD_RATE=9600`. Set these in `.env` if the port or sketch changes. The optional JSON firmware uses 115200 baud. For details, see [REALTIME_BIN_SETUP.md](REALTIME_BIN_SETUP.md).
 
 ## 7. Connect the optional ESP32-S3 yard sensor
 
@@ -102,7 +102,7 @@ Use [NEXT_STEPS.md](NEXT_STEPS.md) for the detailed wiring and upload procedure.
 | What you see | What to do |
 |---|---|
 | Analytics shows too little history | Select **Reload Demo Data**, wait for refresh, and reopen Analytics. |
-| Arduino Bin Monitor is waiting | Confirm the Uno is on COM12, close Arduino IDE Serial Monitor, and restart the backend. |
+| Live Sensor Dashboard is waiting | Confirm the Uno is on COM12, close Arduino IDE Serial Monitor, and restart the backend. |
 | ESP32 yard node is OFFLINE | Confirm the board is powered, on the same Wi-Fi, using the laptop's current IP, and posting to port 5000. |
 | Upload says “This chip is ESP32-S3, not ESP32” | Select **ESP32S3 Dev Module** in Arduino IDE. |
 | No ultrasonic readings | Check common ground, the selected sketch's TRIG/ECHO pins, sensor orientation, and board-appropriate voltage levels. |

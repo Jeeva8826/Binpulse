@@ -36,9 +36,20 @@ function handleLine(rawLine) {
     return;
   }
 
+  // The user's Arduino Uno sketch emits a readable telemetry line rather than
+  // JSON. Convert that exact format to BIN01 telemetry while leaving alerts and
+  // sensor diagnostics out of the measurement stream.
+  const textBinReading = /^Distance:\s*(-?\d+(?:\.\d+)?)\s*cm\s*\|\s*Fill:\s*(-?\d+(?:\.\d+)?)\s*%$/i.exec(line);
   let payload;
+  if (textBinReading) {
+    payload = {
+      bin_id: 'BIN01',
+      distance_cm: Number(textBinReading[1]),
+      fill: Number(textBinReading[2])
+    };
+  }
   try {
-    payload = JSON.parse(line);
+    if (!payload) payload = JSON.parse(line);
   } catch {
     return; // Ignore human-readable startup and diagnostic lines.
   }

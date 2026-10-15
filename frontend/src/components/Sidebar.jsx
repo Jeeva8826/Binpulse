@@ -12,7 +12,7 @@ export default function Sidebar({ activeTab, setActiveTab, alertCount, isHardwar
     { id: 'reports', label: 'Manifest & Reports', icon: 'summarize' },
     { id: 'dataset', label: 'EcoRoute Sample Data', icon: 'dataset', badge: 'DEMO', badgeColor: 'bg-amber-100 text-amber-800' },
     { id: 'settings', label: 'System Settings', icon: 'tune' },
-    { id: 'legacy-bins', label: 'Arduino Bin Monitor', icon: 'delete_sweep', badge: 'BIN01', badgeColor: 'bg-secondary-container text-on-secondary-container' }
+    { id: 'legacy-bins', label: 'Live Sensor Dashboard', icon: 'sensors', badge: 'BIN01', badgeColor: 'bg-secondary-container text-on-secondary-container' }
   ];
 
   return (

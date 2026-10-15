@@ -2,17 +2,18 @@ import React, { useEffect, useState } from 'react';
 
 export default function LegacyBins() {
   const [liveBin, setLiveBin] = useState(null);
-  const [serialStatus, setSerialStatus] = useState({ status: 'offline', port: 'COM12', baudRate: 115200 });
+  const [serialStatus, setSerialStatus] = useState({ status: 'offline', port: 'COM12', baudRate: 9600 });
+
   useEffect(() => {
     const refresh = () => {
       fetch('/api/bins/').then(r => r.json()).then(rows => {
-      const current = Array.isArray(rows) ? rows.find(row => row.binId === 'BIN01') : null;
-      if (current) setLiveBin(current);
+        const current = Array.isArray(rows) ? rows.find(row => row.binId === 'BIN01') : null;
+        if (current) setLiveBin(current);
       }).catch(() => {});
       fetch('/api/device/serial').then(r => r.json()).then(setSerialStatus).catch(() => {});
     };
     refresh();
-    const timer = window.setInterval(refresh, 2000);
+    const timer = window.setInterval(refresh, 1500);
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
     ws.onmessage = (event) => {
@@ -26,91 +27,52 @@ export default function LegacyBins() {
 
   const liveAgeMs = liveBin ? Date.now() - new Date(liveBin.timestamp).getTime() : Infinity;
   const readingIsFresh = liveAgeMs <= 10000;
-
-  const legacyBins = [
-    { id: 'BIN01', name: 'My Bin (Hardware Node)', fill: 0, rate: null, hoursToFull: null, isReal: true },
-    { id: 'SIM01', name: 'Gandhipuram Bus Stand', fill: 82, rate: 12.0, hoursToFull: 1.5, isReal: false },
-    { id: 'SIM02', name: 'DB Road RS Puram', fill: 45, rate: 4.2, hoursToFull: 13.1, isReal: false },
-    { id: 'SIM03', name: '100 Feet Road', fill: 74, rate: 9.1, hoursToFull: 2.9, isReal: false },
-    { id: 'SIM04', name: 'Town Hall Market East', fill: 91, rate: 15.0, hoursToFull: 0.6, isReal: false },
-    { id: 'SIM05', name: 'Saibaba Temple St', fill: 32, rate: 3.0, hoursToFull: 22.7, isReal: false },
-    { id: 'SIM06', name: 'Avinashi Road Peelamedu', fill: 61, rate: 7.4, hoursToFull: 5.3, isReal: false },
-    { id: 'SIM07', name: 'Race Course North', fill: 28, rate: 2.1, hoursToFull: 34.2, isReal: false },
-    { id: 'SIM08', name: 'Singanallur Junction', fill: 77, rate: 10.5, hoursToFull: 2.2, isReal: false },
-    { id: 'SIM09', name: 'Saravanampatti Tech Zone', fill: 86, rate: 14.2, hoursToFull: 1.0, isReal: false },
-    { id: 'SIM10', name: 'Ukkadam Bus Terminus', fill: 55, rate: 6.0, hoursToFull: 7.5, isReal: false },
-    { id: 'SIM11', name: 'Kovaipudur Square', fill: 19, rate: 1.8, hoursToFull: 45.0, isReal: false }
-  ];
+  const hasLiveReading = Boolean(liveBin && readingIsFresh);
+  const fill = Number(liveBin?.fill ?? 0);
+  const fillStatus = fill >= 80 ? 'Full alert' : fill >= 50 ? 'High fill' : fill >= 30 ? 'Filling' : 'Below alert threshold';
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Optional single-bin monitor notice */}
-      <div className="bg-amber-50 border border-amber-300 p-5 rounded-xl shadow-xs flex items-start gap-3">
-        <span className="material-symbols-outlined text-[24px] text-amber-700 shrink-0">info</span>
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-amber-900">
-            Arduino Uno Single-Bin Monitor
+      <section className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container shadow-xs">
+        <div className="flex flex-wrap justify-between items-start gap-4 pb-5 border-b border-surface-container">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-secondary">Physical sensor · Arduino Uno</p>
+            <h1 className="text-2xl font-bold text-primary mt-1">Live Sensor Dashboard</h1>
+            <p className="text-sm text-on-surface-variant mt-1">Live ultrasonic fill readings from BIN01 over USB serial.</p>
+          </div>
+          <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${serialStatus.status === 'online' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+            <span className={`w-2 h-2 rounded-full ${serialStatus.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            {serialStatus.status === 'online' ? `Connected · ${serialStatus.port}` : `Waiting · ${serialStatus.port}`}
           </span>
-          <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-            Connect the Arduino Uno over USB to send live ultrasonic fill readings for BIN01. The other cards are fixed sample values. The backend reads {serialStatus.port} at {serialStatus.baudRate} baud; close Arduino IDE Serial Monitor while BinPulse is using the port.
-          </p>
-        </div>
-      </div>
-
-      {/* Legacy Bins Grid */}
-      <div className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container shadow-xs">
-        <div className="flex justify-between items-center pb-3 border-b border-surface-container mb-4">
-          <h2 className="text-sm font-bold text-primary uppercase tracking-wider">
-            Arduino Live Feed & Sample Bin Cards
-          </h2>
-          <span className="text-xs text-outline font-medium">Arduino {serialStatus.status === 'online' ? 'connected' : 'waiting'} · BIN01: {liveBin ? `${readingIsFresh ? 'Live' : 'Last saved'} · ${new Date(liveBin.timestamp).toLocaleTimeString()}` : 'Waiting for sensor'} · other cards are samples</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {legacyBins.map((item) => {
-            const b = item.id === 'BIN01' && liveBin ? { ...item, ...liveBin } : item;
-            const isFull = b.fill >= 75;
-            const isWarn = b.fill >= 50 && b.fill < 75;
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+          <div className="p-5 rounded-xl bg-surface-container-low border border-surface-container">
+            <div className="text-xs font-semibold text-on-surface-variant">Bin fill level</div>
+            <div className="text-4xl font-bold text-primary mt-2">{hasLiveReading ? `${fill}%` : '—'}</div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mt-4">
+              <div className={`h-full rounded-full transition-all ${fill >= 80 ? 'bg-red-600' : fill >= 50 ? 'bg-amber-500' : 'bg-secondary'}`} style={{ width: `${hasLiveReading ? Math.min(100, Math.max(0, fill)) : 0}%` }} />
+            </div>
+            <div className="text-xs text-outline mt-2">{hasLiveReading ? fillStatus : 'Waiting for a fresh sensor sample'}</div>
+          </div>
 
-            return (
-              <div key={b.id} className="p-4 rounded-lg bg-surface-container-low border border-surface-container flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-mono font-bold text-primary text-xs">{b.id}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      b.isReal ? 'bg-secondary-container text-on-secondary-container' : 'bg-slate-200 text-slate-700'
-                    }`}>
-                      {b.isReal ? (readingIsFresh ? 'Arduino Live' : 'Last Reading') : 'Simulated Sample'}
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold text-on-surface block truncate">{b.name}</span>
-                </div>
+          <div className="p-5 rounded-xl bg-surface-container-low border border-surface-container">
+            <div className="text-xs font-semibold text-on-surface-variant">Sensor distance</div>
+            <div className="text-4xl font-bold text-primary mt-2">{hasLiveReading && liveBin.distanceCm != null ? `${Number(liveBin.distanceCm).toFixed(1)} cm` : '—'}</div>
+            <div className="text-xs text-outline mt-2">Measured by HC-SR04 on D9 / D10</div>
+          </div>
 
-                <div className="my-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-outline">Fill Level</span>
-                    <span className="font-mono font-bold text-on-surface">{b.id === 'BIN01' && !liveBin ? 'Waiting' : `${b.fill}%`}</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        isFull ? 'bg-red-600' : isWarn ? 'bg-amber-500' : 'bg-secondary'
-                      }`}
-                      style={{ width: `${b.id === 'BIN01' && !liveBin ? 0 : b.fill}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between text-[11px] text-outline pt-2 border-t border-surface-container">
-                  {b.id === 'BIN01' ? <span>{liveBin ? `Volume: ${liveBin.volumeL} / ${liveBin.capacityL} L` : 'No sensor data yet'}</span> : <span>Rate: {b.rate}%/hr</span>}
-                  {b.id !== 'BIN01' && <span className="font-medium text-on-surface">Full in ~{b.hoursToFull}h</span>}
-                </div>
-              </div>
-            );
-          })}
+          <div className="p-5 rounded-xl bg-surface-container-low border border-surface-container">
+            <div className="text-xs font-semibold text-on-surface-variant">Connection details</div>
+            <div className="text-lg font-bold text-primary mt-2">{serialStatus.baudRate} baud</div>
+            <div className="text-xs text-outline mt-2">{hasLiveReading ? `Last reading ${new Date(liveBin.timestamp).toLocaleTimeString()}` : 'Waiting for Arduino data'}</div>
+          </div>
         </div>
-      </div>
-      {serialStatus.error && <p className="text-xs text-amber-800">Arduino serial status: {serialStatus.error}</p>}
+      </section>
+
+      {serialStatus.error && <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-4">{serialStatus.error}</p>}
+      {!serialStatus.error && !hasLiveReading && <p className="text-sm text-on-surface-variant bg-surface-container-low rounded-lg p-4">Connect the Arduino and close Serial Monitor so BinPulse can receive the live data. Simulation data remains in the separate operations dashboard.</p>}
+      {hasLiveReading && <p className="text-xs text-on-surface-variant">This page shows physical BIN01 sensor data only. Simulation and operational demo data remain on the existing dashboard.</p>}
     </div>
   );
 }
