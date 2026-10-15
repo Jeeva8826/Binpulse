@@ -71,7 +71,7 @@ For the separate single-bin monitor, follow [REALTIME_BIN_SETUP.md](REALTIME_BIN
 
 ## 6. Connect the optional Arduino Uno BIN01 sensor
 
-1. Wire HC-SR04 **VCC to 5V**, **GND to GND**, **TRIG to D7**, and **ECHO to D8**. The Uno accepts 5V on its digital input; this differs from the ESP32 wiring.
+1. Wire HC-SR04 **VCC to 5V**, **GND to GND**, **TRIG to D9**, and **ECHO to D10**. The Uno accepts 5V on its digital input; this differs from the ESP32 wiring.
 2. In `firmware/binpulse_bin_node/config.h`, calibrate the bin size and empty/full distances to match the installed sensor.
 3. In Arduino IDE open `firmware/binpulse_bin_node/binpulse_bin_node.ino`, select **Arduino Uno** and **COM12**, then upload. The sketch streams JSON at **115200 baud**.
 4. Start BinPulse with `npm run dev`. The backend reads COM12 and the dashboard uses port 3000. Close Arduino IDE Serial Monitor while BinPulse is reading the serial port.

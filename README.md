@@ -82,8 +82,8 @@ The recommended Arduino setup for the central-yard dashboard uses the Uno as a U
 |---|---|
 | VCC | 5V |
 | GND | GND |
-| TRIG | D7 |
-| ECHO | D8 |
+| TRIG | D9 |
+| ECHO | D10 |
 
 Upload `firmware/arduino_yard_node/arduino_yard_node.ino`, set `ARDUINO_SERIAL_PORT` to the Uno's COM port (default `COM12`), start BinPulse with `npm run dev`, then close Arduino IDE Serial Monitor. Select **Arduino Yard** in the dashboard and open **Yard Entrance Node**. A truck-presence event is confirmed after three consecutive readings within the configured distance threshold.
 
@@ -102,7 +102,7 @@ The separate BIN01 sketch sends one JSON telemetry record approximately every tw
 | TRIG | D7 |
 | ECHO | D8 |
 
-The Uno accepts the HC-SR04's 5V echo signal directly. Do not use this wiring for an ESP32. Calibrate the bin dimensions and empty/full sensor distances in `firmware/binpulse_bin_node/config.h` before interpreting fill and volume estimates.
+The Uno accepts the HC-SR04's 5V echo signal directly. Do not use this wiring for an ESP32. The default BIN01 setup uses a 40 cm bin height and 40 cm empty distance to match the supplied Arduino sketch. Calibrate the bin dimensions and empty/full sensor distances in `firmware/binpulse_bin_node/config.h` before interpreting fill and volume estimates.
 
 ### Upload and connect
 
