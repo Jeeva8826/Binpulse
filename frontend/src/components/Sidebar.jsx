@@ -79,7 +79,7 @@ export default function Sidebar({ activeTab, setActiveTab, alertCount, isHardwar
         <div className="flex flex-col gap-1 mt-2 text-[11px] text-on-surface-variant">
           <div className="flex justify-between">
             <span>Yard Feed</span>
-            <span className="font-semibold text-primary">{isHardwareMode ? (yardOnline ? 'ESP32 Live' : 'ESP32 Waiting') : 'Simulator'}</span>
+            <span className="font-semibold text-primary">{isHardwareMode ? (yardOnline ? 'Arduino Live' : 'Arduino Waiting') : 'Simulator'}</span>
           </div>
           <div className="flex justify-between">
             <span>Yard Ingestion</span>

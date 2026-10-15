@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const config = require('../config');
 const binService = require('./binService');
+const yardService = require('./yardService');
 const { broadcast } = require('../websocket');
 
 let child = null;
@@ -41,19 +42,46 @@ function handleLine(rawLine) {
   } catch {
     return; // Ignore human-readable startup and diagnostic lines.
   }
-  if (!payload || typeof payload.bin_id !== 'string' || !Number.isFinite(Number(payload.fill))) return;
+  if (!payload || typeof payload !== 'object') return;
 
-  const reading = binService.recordReading({
-    binId: payload.bin_id,
-    fill: payload.fill,
-    distanceCm: payload.distance_cm,
-    volumeL: payload.volume_l,
-    capacityL: payload.capacity_l,
-    timestamp: payload.timestamp || new Date().toISOString()
-  });
-  lastReadingAt = reading.timestamp;
-  lastError = null;
-  broadcast({ type: 'BIN_TELEMETRY', data: reading });
+  const timestamp = payload.timestamp || new Date().toISOString();
+  const deviceId = payload.device_id || payload.deviceId;
+  const distanceCm = payload.distance_cm !== undefined ? payload.distance_cm : payload.distanceCm;
+
+  // Yard node firmware sends distance-only telemetry over USB serial. Route it
+  // through the same debounce, visit, persistence, and WebSocket path as ESP32.
+  if (deviceId && distanceCm !== undefined) {
+    const result = yardService.processSensorReading({
+      deviceId,
+      distanceCm,
+      rawDistanceCm: payload.raw_distance_cm ?? payload.rawDistanceCm ?? distanceCm,
+      timestamp,
+      uptimeS: payload.uptime_s ?? payload.uptimeS
+    });
+    lastReadingAt = result.timestamp;
+    lastError = result.event === 'sensor_dropout'
+      ? 'Arduino is connected, but the ultrasonic sensor has no echo. Check the target, wiring, and pin mapping.'
+      : null;
+    broadcast({ type: 'YARD_TELEMETRY', data: result });
+    if (result.completedVisit) {
+      broadcast({ type: 'TRUCK_VISIT_COMPLETED', data: result.completedVisit });
+    }
+  }
+
+  // Preserve support for the optional Arduino single-bin firmware format.
+  if (typeof payload.bin_id === 'string' && Number.isFinite(Number(payload.fill))) {
+    const reading = binService.recordReading({
+      binId: payload.bin_id,
+      fill: payload.fill,
+      distanceCm,
+      volumeL: payload.volume_l,
+      capacityL: payload.capacity_l,
+      timestamp
+    });
+    lastReadingAt = reading.timestamp;
+    lastError = null;
+    broadcast({ type: 'BIN_TELEMETRY', data: reading });
+  }
 }
 
 function start() {

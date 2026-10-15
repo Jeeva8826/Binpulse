@@ -50,7 +50,7 @@ export default function Navbar({
               isHardwareMode ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            ESP32 Yard
+            Arduino Yard
           </button>
         </div>
 

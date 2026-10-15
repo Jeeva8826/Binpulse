@@ -1,7 +1,7 @@
 /*
  * BinPulse live BIN01 sensor for Arduino Uno.
  * USB serial sends one JSON record per sample; the Node backend reads COM12.
- * HC-SR04: VCC -> 5V, GND -> GND, TRIG -> D7, ECHO -> D9.
+ * HC-SR04: VCC -> 5V, GND -> GND, TRIG -> D7, ECHO -> D8.
  */
 
 #include "config.h"

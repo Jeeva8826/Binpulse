@@ -14,7 +14,7 @@ export default function YardMonitor({
   const [dwellTime, setDwellTime] = useState(45);
 
   const device = yardStatus?.device || {
-    deviceId: 'ESP32_YARD_01',
+    deviceId: 'ARDUINO_YARD_01',
     status: 'offline',
     lastSeenAt: null,
     rssi: null,
@@ -22,7 +22,8 @@ export default function YardMonitor({
   };
 
   const isTruckPresent = !!yardStatus?.isTruckPresent;
-  const hasReading = Number.isFinite(Number(yardStatus?.latestDistanceCm));
+  const hasReading = Number.isFinite(Number(yardStatus?.latestDistanceCm)) &&
+    Number(yardStatus.latestDistanceCm) >= 2 && Number(yardStatus.latestDistanceCm) <= 400;
   const distanceCm = hasReading ? Number(yardStatus.latestDistanceCm) : 0;
   const currentDwell = yardStatus?.currentDwellSeconds || 0;
 
@@ -44,8 +45,8 @@ export default function YardMonitor({
             </span>
           </div>
           <p className="text-xs text-on-surface-variant mt-1 max-w-2xl leading-relaxed">
-            Centralised non-contact ultrasonic sensor at the facility entrance. Replaces weighing-bridge instrumentation 
-            to detect truck presence, debounce dwell time, and estimate incoming waste volume.
+            Centralised ultrasonic sensor at the facility entrance. Arduino Uno streams distance over USB to detect truck
+            presence, debounce dwell time, and estimate incoming waste volume. An ESP32 Wi-Fi node is also supported.
           </p>
         </div>
 
@@ -57,8 +58,10 @@ export default function YardMonitor({
           </div>
           <div className="w-px h-7 bg-surface-container-high"></div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-outline font-semibold uppercase">Wi-Fi RSSI</span>
-            <span className="text-xs font-mono font-semibold text-secondary">{device.rssi || -68} dBm</span>
+            <span className="text-[10px] text-outline font-semibold uppercase">Connection</span>
+            <span className="text-xs font-mono font-semibold text-secondary">
+              {String(device.deviceId || '').startsWith('ARDUINO_') ? 'USB Serial' : device.rssi ? `${device.rssi} dBm` : 'Wi-Fi'}
+            </span>
           </div>
         </div>
       </div>
@@ -71,7 +74,7 @@ export default function YardMonitor({
             <span>Ultrasonic Distance</span>
             <span className={`inline-flex items-center gap-1 ${device.status === 'online' ? 'text-emerald-700' : 'text-outline'}`}>
               <span className={`w-2 h-2 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-              {device.status === 'online' ? 'Live Feed' : 'No recent data'}
+              {yardStatus?.latestEvent === 'sensor_dropout' ? 'No echo' : device.status === 'online' ? 'Live Feed' : 'No recent data'}
             </span>
           </div>
 
@@ -170,20 +173,20 @@ export default function YardMonitor({
         {/* Hardware & Simulation Testing Panel */}
         <div className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-outline font-bold uppercase tracking-wider pb-3 border-b border-surface-container">
-            <span>{isHardwareMode ? 'ESP32 Live Connection' : 'Simulation & Testing'}</span>
+            <span>{isHardwareMode ? 'Arduino Live Connection' : 'Simulation & Testing'}</span>
             <span className="material-symbols-outlined text-[18px] text-primary">{isHardwareMode ? 'sensors' : 'science'}</span>
           </div>
 
           {isHardwareMode ? (
             <div className="flex flex-col gap-3 my-3 text-xs text-on-surface-variant">
-              <p className="leading-relaxed">The dashboard is listening for real readings from your ESP32 ultrasonic sensor. A new reading should arrive about every 2 seconds.</p>
+              <p className="leading-relaxed">The dashboard is listening for readings from your Arduino Uno ultrasonic sensor over USB serial. A new reading should arrive about every 2 seconds.</p>
               <div className="rounded-lg bg-surface-container-low p-3 space-y-1">
-                <div className="flex justify-between gap-3"><span>Connection</span><strong>{device.status === 'online' ? 'ESP32 connected' : 'Waiting for ESP32'}</strong></div>
+                <div className="flex justify-between gap-3"><span>Connection</span><strong>{device.status === 'online' ? 'Arduino connected' : 'Waiting for Arduino'}</strong></div>
                 <div className="flex justify-between gap-3"><span>Last reading</span><strong>{yardStatus?.latestReadingAt ? new Date(yardStatus.latestReadingAt).toLocaleTimeString() : 'None received yet'}</strong></div>
-                <div className="flex justify-between gap-3"><span>Last event</span><strong>{yardStatus?.latestEvent || '—'}</strong></div>
-                <div className="flex justify-between gap-3"><span>Wi-Fi signal</span><strong>{device.rssi == null ? '—' : `${device.rssi} dBm`}</strong></div>
+                <div className="flex justify-between gap-3"><span>Sensor status</span><strong>{yardStatus?.latestEvent === 'sensor_dropout' ? 'No echo' : yardStatus?.latestEvent || 'Waiting for reading'}</strong></div>
+                <div className="flex justify-between gap-3"><span>Serial link</span><strong>USB · 115200 baud</strong></div>
               </div>
-              <p className="text-[11px] leading-relaxed">For the device URL, use your computer’s Wi-Fi/LAN IP and port 5000. The ESP32 cannot use localhost.</p>
+              <p className="text-[11px] leading-relaxed">The Uno connects to this computer through USB. Keep the COM port selected in `.env` and close Arduino IDE Serial Monitor while BinPulse is running.</p>
             </div>
           ) : (
           <div className="flex flex-col gap-3 my-2">
@@ -254,7 +257,7 @@ export default function YardMonitor({
           )}
 
           <div className="text-[10px] text-outline pt-2 border-t border-surface-container">
-            {isHardwareMode ? 'Live values are physical ESP32 readings; quantity remains an estimate.' : 'Simulation values are generated locally; no hardware reading is implied.'}
+            {isHardwareMode ? 'Live values are physical Arduino ultrasonic readings; quantity remains an estimate.' : 'Simulation values are generated locally; no hardware reading is implied.'}
           </div>
         </div>
       </div>

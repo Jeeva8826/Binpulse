@@ -9,8 +9,8 @@ The project is configured around Coimbatore municipal operations. It includes a 
 - Presents operational summaries, ward analytics, collection schedules, alerts, dispatches, route plans, yard visits, and downloadable manifests in one dashboard.
 - Uses historical waste-generation data to produce collection plans and explain why an area is scheduled.
 - Creates capacity-aware truck routes and compares optimized plans with the configured baseline.
-- Supports simulated yard telemetry for software demonstrations and an ESP32 Wi-Fi node for physical truck-presence sensing at a yard entrance.
-- Supports an Arduino Uno over USB for live ultrasonic fill readings from BIN01.
+- Supports simulated yard telemetry for software demonstrations and an Arduino Uno over USB for physical truck-presence sensing at a yard entrance.
+- Retains an ESP32 Wi-Fi yard-node option and an optional Arduino Uno sketch for a single bin's BIN01 fill readings.
 - Keeps simulated/demo records distinct from physical Arduino readings and clearly labels sample bin cards.
 - Broadcasts updates through a WebSocket connection and stores operational and sensor data in SQLite.
 
@@ -20,11 +20,12 @@ The project is configured around Coimbatore municipal operations. It includes a 
 |---|---|---|---|
 | Seeded municipal history | Ward analytics, schedules, dispatch, and route planning | SQLite | Overview, Area Analytics, Smart Schedule, Route Planning, and reports |
 | Yard simulator | Demonstrates truck arrival, dwell, and departure events | HTTP API on port 5000 | Yard Entrance Node in Simulation mode |
-| ESP32 yard node | Reports ultrasonic distance and truck-presence events at the yard | Wi-Fi HTTP API on port 5000 | Yard Entrance Node in ESP32 Yard mode |
-| Arduino Uno BIN01 node | Reports live ultrasonic bin fill, distance, and estimated volume | USB serial to the backend | Arduino Bin Monitor |
+| Arduino Uno yard node | Reports ultrasonic distance and truck-presence events at the yard | USB serial to the backend on COM12 by default | Yard Entrance Node in Arduino Yard mode |
+| ESP32 yard node | Optional Wi-Fi version of the central yard sensor | HTTP API on port 5000 | Yard Entrance Node in Arduino Yard mode |
+| Arduino Uno BIN01 node | Optional single-bin fill, distance, and estimated volume | USB serial to the backend | Arduino Bin Monitor |
 | EcoRoute sample records | Displays supplied example records | Local API | EcoRoute Sample Data; records are marked simulated |
 
-The yard selector controls only the central-yard feed. Arduino BIN01 is a separate USB serial feed and can be used independently.
+The yard selector controls the central-yard feed. The Arduino yard sketch reports distance over USB serial; the optional ESP32 sketch reports through Wi-Fi. The separate Arduino Bin Monitor is available when the board is flashed with the BIN01 sketch.
 
 ## Technology
 
@@ -71,9 +72,9 @@ Copy `.env.example` to `.env` and adjust values for the local machine when neede
 
 Keep `.env` and real credentials local. Do not commit deployment secrets or Wi-Fi passwords.
 
-## Live Arduino Uno bin monitor
+## Live Arduino Uno yard sensor
 
-The Uno sketch sends one JSON telemetry record approximately every two seconds. The Node backend reads the USB serial stream, validates and stores BIN01 readings, and broadcasts updates to the dashboard.
+The recommended Arduino setup for the central-yard dashboard uses the Uno as a USB-connected yard entrance node. It sends distance JSON to the backend, which runs the same presence debounce, visit tracking, SQLite persistence, and WebSocket broadcast path used by the ESP32 yard API.
 
 ### HC-SR04 wiring
 
@@ -82,7 +83,24 @@ The Uno sketch sends one JSON telemetry record approximately every two seconds. 
 | VCC | 5V |
 | GND | GND |
 | TRIG | D7 |
-| ECHO | D9 |
+| ECHO | D8 |
+
+Upload `firmware/arduino_yard_node/arduino_yard_node.ino`, set `ARDUINO_SERIAL_PORT` to the Uno's COM port (default `COM12`), start BinPulse with `npm run dev`, then close Arduino IDE Serial Monitor. Select **Arduino Yard** in the dashboard and open **Yard Entrance Node**. A truck-presence event is confirmed after three consecutive readings within the configured distance threshold.
+
+See [docs/ARDUINO_YARD_SETUP.md](docs/ARDUINO_YARD_SETUP.md) for the full setup and troubleshooting guide.
+
+## Optional Arduino Uno bin monitor
+
+The separate BIN01 sketch sends one JSON telemetry record approximately every two seconds. The Node backend reads the USB serial stream, validates and stores BIN01 readings, and broadcasts updates to the Arduino Bin Monitor.
+
+### HC-SR04 wiring
+
+| HC-SR04 pin | Arduino Uno |
+|---|---|
+| VCC | 5V |
+| GND | GND |
+| TRIG | D7 |
+| ECHO | D8 |
 
 The Uno accepts the HC-SR04's 5V echo signal directly. Do not use this wiring for an ESP32. Calibrate the bin dimensions and empty/full sensor distances in `firmware/binpulse_bin_node/config.h` before interpreting fill and volume estimates.
 

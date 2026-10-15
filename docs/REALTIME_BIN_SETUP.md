@@ -9,9 +9,9 @@ This path sends real HC-SR04 readings from an Arduino Uno to the BIN01 card in t
 | VCC | 5V |
 | GND | GND |
 | TRIG | D7 |
-| ECHO | D9 |
+| ECHO | D8 |
 
-The Uno inputs are 5V tolerant, so the HC-SR04 ECHO line can connect directly to D9. Do not use the ESP32 wiring/pin numbers for this sketch.
+The Uno inputs are 5V tolerant, so the HC-SR04 ECHO line can connect directly to D8. Do not use the ESP32 wiring/pin numbers for this sketch.
 
 ## Start the dashboard and connect the board
 
@@ -26,5 +26,5 @@ The backend defaults to `ARDUINO_SERIAL_PORT=COM12` and `ARDUINO_BAUD_RATE=11520
 ## Troubleshooting
 
 - **Waiting for Arduino:** confirm the Uno is connected to the configured COM port, close Serial Monitor, then restart the backend. The backend will retry opening the port every five seconds.
-- **No readings:** check that the board runs the `binpulse_bin_node` sketch at 115200 baud and that HC-SR04 uses D7/D9 with common ground.
+- **No readings:** check that the board runs the `binpulse_bin_node` sketch at 115200 baud and that HC-SR04 uses D7/D8 with common ground.
 - **Fill level looks wrong:** measure the sensor-to-bin-bottom distance and calibrate the empty/full distances in `config.h`; estimated volume assumes a level waste surface.
